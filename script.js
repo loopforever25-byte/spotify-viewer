@@ -165,7 +165,7 @@ function updateDisplay(data) {
     };
   }
   localStorage.setItem('spotify_current', JSON.stringify(lastData));
-  jsonOutput.textContent = JSON.stringify(lastData, null, 2);
+  updateJSONFile(lastData);
 }
 
 // small helper to avoid XSS if scraped or displayed
@@ -244,3 +244,21 @@ function logout() {
     updateDisplay(res);
   }, 10000);
 })();
+
+// ---------- Buat current.json ----------
+async function updateJSONFile(data) {
+  try {
+    const jsonText = JSON.stringify(data, null, 2);
+    // simpan JSON ke localStorage
+    localStorage.setItem('spotify_current', jsonText);
+
+    // Tampilkan JSON di halaman
+    document.getElementById('json-output').textContent = jsonText;
+
+    // Jika service worker aktif (Vercel / Pages tidak support tulis file)
+    // ekstensi bisa ambil JSON dari URL lain, nanti kita bikin trick-nya di bawah
+  } catch (err) {
+    console.error("Gagal update JSON file:", err);
+  }
+}
+
