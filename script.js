@@ -2,7 +2,7 @@
 
 // --- CONFIG: ganti redirectUri sesuai host kamu ---
 const clientId = '2c9f3936abbb4601a68f7203b959092b';
-const redirectUri = 'http://127.0.0.1:5500/'; // ganti sesuai deploy
+const redirectUri = 'https://loopforever25-byte.github.io/spotify-viewer/'; // ganti sesuai deploy
 const sheetUrl = 'https://script.google.com/macros/s/AKfycbxGNc2FIsX3yLQIcEr1j1Shm8q1QDyCmU71cI6HreUhsMbDap1z1Wqzsji8AjIsJLV1/exec'; // ganti dengan Apps Script URL
 
 // --- Elemen DOM ---
