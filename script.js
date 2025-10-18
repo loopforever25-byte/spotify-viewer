@@ -3,7 +3,7 @@
 // --- CONFIG: ganti redirectUri sesuai host kamu ---
 const clientId = '2c9f3936abbb4601a68f7203b959092b';
 const redirectUri = 'https://loopforever25-byte.github.io/spotify-viewer/'; // ganti sesuai deploy
-const sheetUrl = 'https://script.google.com/macros/s/AKfycbyIN-xwXsaVMFwD_aa7bqPHbygVSLvUYkDOJYJAOmNSI0OMPfWjcHen258qNBL1WzfB/exec'; // ganti dengan Apps Script URL
+const sheetUrl = 'https://script.google.com/macros/library/d/1uRPIxCc3pfVNzXGEgIjM1MjHSOWVNFuPZRhWLfIJFDMu0rWQtosyDb4P/1'; // ganti dengan Apps Script URL
 
 // --- Elemen DOM ---
 const authorizeBtn = document.getElementById('authorize-btn');
