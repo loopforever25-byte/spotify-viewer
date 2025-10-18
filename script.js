@@ -242,5 +242,5 @@ function logout() {
   setInterval(async () => {
     const res = await getCurrentlyPlaying();
     updateDisplay(res);
-  }, 1000);
+  }, 10000);
 })();
