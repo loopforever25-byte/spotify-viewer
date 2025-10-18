@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Spotify Now Playing - Final</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Spotify Now Playing</h1>
+      <div class="header-actions">
+        <button id="authorize-btn" class="btn">Otorisasi dengan Spotify</button>
+        <button id="logout-btn" class="btn secondary">Logout</button>
+      </div>
+    </header>
+
+    <main>
+      <section id="player-section" style="display:none;">
+        <div id="now-playing" class="now-playing"></div>
+        <pre id="json-output" class="json-box"></pre>
+      </section>
+
+      <footer>
+        <p class="muted">Token auto-refresh aktif. Pastikan redirect URI sesuai di Spotify Dashboard.</p>
+      </footer>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
