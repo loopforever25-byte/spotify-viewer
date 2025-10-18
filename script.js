@@ -1,9 +1,8 @@
-// ---------- Final script.js (PKCE + auto refresh + currently-playing + JSON → Spreadsheet) ----------
+// ---------- Final script.js (PKCE + auto refresh + currently-playing + JSON live) ----------
 
-// --- CONFIG: ganti redirectUri sesuai host kamu ---
+// --- CONFIG: ganti redirectUri sesuai host kamu (harus sama di Spotify Dashboard) ---
 const clientId = '2c9f3936abbb4601a68f7203b959092b';
-const redirectUri = 'https://loopforever25-byte.github.io/spotify-viewer/'; // ganti sesuai deploy
-const sheetUrl = 'https://script.google.com/macros/library/d/1uRPIxCc3pfVNzXGEgIjM1MjHSOWVNFuPZRhWLfIJFDMu0rWQtosyDb4P/1'; // ganti dengan Apps Script URL
+const redirectUri = 'https://loopforever25-byte.github.io/spotify-viewer/'; // <-- ganti dengan https://username.github.io/repo/ saat deploy
 
 // --- Elemen DOM ---
 const authorizeBtn = document.getElementById('authorize-btn');
@@ -28,9 +27,6 @@ async function generateCodeChallenge(verifier) {
   return btoa(String.fromCharCode(...new Uint8Array(digest)))
     .replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 }
-function escapeHtml(s = '') {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
 
 // -------------------- Token exchange & refresh --------------------
 async function exchangeCodeForToken(code) {
@@ -52,6 +48,7 @@ async function exchangeCodeForToken(code) {
   if (data.access_token) {
     localStorage.setItem('access_token', data.access_token);
     if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
+    // save expiry
     const expiresAt = Date.now() + (data.expires_in || 3600) * 1000;
     localStorage.setItem('expires_at', String(expiresAt));
     return data.access_token;
@@ -63,12 +60,16 @@ async function exchangeCodeForToken(code) {
 
 async function refreshAccessToken() {
   const refresh_token = localStorage.getItem('refresh_token');
-  if (!refresh_token) return null;
+  if (!refresh_token) {
+    console.warn('No refresh_token found.');
+    return null;
+  }
   const params = new URLSearchParams({
     client_id: clientId,
     grant_type: 'refresh_token',
     refresh_token
   });
+
   try {
     const resp = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
@@ -81,6 +82,7 @@ async function refreshAccessToken() {
       if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token);
       const expiresAt = Date.now() + (data.expires_in || 3600) * 1000;
       localStorage.setItem('expires_at', String(expiresAt));
+      console.log('Access token refreshed');
       return data.access_token;
     } else {
       console.error('Refresh failed', data);
@@ -92,7 +94,7 @@ async function refreshAccessToken() {
   }
 }
 
-// wrapper fetch auto-refresh
+// wrapper fetch yang auto-refresh kalau 401
 async function apiFetch(url, opts = {}) {
   const token = localStorage.getItem('access_token');
   if (!token) throw new Error('no_access_token');
@@ -100,6 +102,7 @@ async function apiFetch(url, opts = {}) {
 
   let res = await fetch(url, opts);
   if (res.status === 401) {
+    // try refresh then retry once
     const newToken = await refreshAccessToken();
     if (!newToken) throw new Error('refresh_failed');
     opts.headers.Authorization = `Bearer ${newToken}`;
@@ -161,77 +164,84 @@ function updateDisplay(data) {
       duration_ms: track.duration_ms || 0
     };
   }
-
   localStorage.setItem('spotify_current', JSON.stringify(lastData));
-  updateJSONFile(lastData);
+  jsonOutput.textContent = JSON.stringify(lastData, null, 2);
 }
 
-// -------------------- Kirim JSON ke Spreadsheet --------------------
-async function updateJSONFile(data) {
-  try {
-    const jsonText = JSON.stringify(data, null, 2);
-    document.getElementById('json-output').textContent = jsonText; // opsional tampilkan
-
-    await fetch(sheetUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: jsonText
-    });
-
-  } catch (err) {
-    console.error("Gagal kirim ke spreadsheet:", err);
-  }
+// small helper to avoid XSS if scraped or displayed
+function escapeHtml(s = '') {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-// -------------------- Auto refresh --------------------
+// -------------------- Auto refresh management --------------------
 function scheduleTokenAutoRefresh() {
+  // clear existing timer
   if (refreshTimerId) clearTimeout(refreshTimerId);
   const expiresAt = Number(localStorage.getItem('expires_at')) || 0;
   const now = Date.now();
+  // refresh 60 seconds before expiry or in 55 minutes if unknown
   const msUntil = expiresAt > now ? Math.max(1000, expiresAt - now - 60*1000) : 55*60*1000;
   refreshTimerId = setTimeout(async () => {
     const newT = await refreshAccessToken();
-    if (newT) scheduleTokenAutoRefresh();
+    if (newT) {
+      scheduleTokenAutoRefresh();
+    }
   }, msUntil);
 }
 
 // -------------------- Logout --------------------
 function logout() {
-  ['access_token','refresh_token','expires_at','spotify_current','pkce_verifier'].forEach(k=>localStorage.removeItem(k));
-  window.location.href = redirectUri;
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('expires_at');
+  localStorage.removeItem('spotify_current');
+  localStorage.removeItem('pkce_verifier');
+  window.location.href = redirectUri; // reload clean
 }
 
 // -------------------- Init / Main --------------------
 (async function init(){
+  // wire buttons
   authorizeBtn.addEventListener('click', redirectToAuthCodeFlow);
   logoutBtn.addEventListener('click', logout);
 
+  // If OAuth callback contains code, exchange it
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
   if (code) {
     try {
       accessToken = await exchangeCodeForToken(code);
+      // remove code from URL
       window.history.replaceState({}, document.title, redirectUri);
-    } catch (e) { console.error('exchange error', e); }
+    } catch (e) {
+      console.error('exchange error', e);
+    }
   }
 
+  // load stored token if any
   accessToken = localStorage.getItem('access_token') || accessToken || null;
 
   if (!accessToken) {
+    // show auth button
     authorizeBtn.style.display = 'inline-block';
     playerSection.style.display = 'none';
     return;
   }
 
+  // token exists: schedule refresh & show UI
   authorizeBtn.style.display = 'none';
   playerSection.style.display = 'block';
+
   scheduleTokenAutoRefresh();
 
+  // initial display
   const d = await getCurrentlyPlaying();
   updateDisplay(d);
 
+  // periodically update currently playing and store JSON (10s)
   setInterval(async () => {
     const res = await getCurrentlyPlaying();
     updateDisplay(res);
   }, 10000);
 })();
+
