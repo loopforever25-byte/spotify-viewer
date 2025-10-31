@@ -2,7 +2,7 @@
 
 // --- CONFIG: ganti redirectUri sesuai host kamu (harus sama di Spotify Dashboard) ---
 const clientId = '2c9f3936abbb4601a68f7203b959092b';
-const redirectUri = 'https://loopforever25-byte.github.io/spotify-viewer/'; // <-- ganti dengan https://username.github.io/repo/ saat deploy
+const redirectUri = 'http://127.0.0.1:5500/'; // <-- ganti dengan https://username.github.io/repo/ saat deploy
 
 // --- Elemen DOM ---
 const authorizeBtn = document.getElementById('authorize-btn');
@@ -242,6 +242,5 @@ function logout() {
   setInterval(async () => {
     const res = await getCurrentlyPlaying();
     updateDisplay(res);
-  }, 10000);
+  }, 100);
 })();
-
